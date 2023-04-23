@@ -5,7 +5,6 @@ import os
 import platform
 from cmath import polar, exp, phase, rect
 def angle():
-    
     delete_dc = True
     source_path = os.getcwd()
     c = 3*10**8
@@ -39,11 +38,11 @@ def angle():
     mes1 = I1_mes - complex(0, -1) * Q1_mes
     if(delete_dc):
         for i in range(len(mes1)):
-            mes1[i:i+Ns_mes] = mes1[i:i+Ns_cal] - np.mean(mes1[i:i+Ns_cal])
+            mes1[i:i+Ns_mes] = mes1[i:i+Ns_mes] - np.mean(mes1[i:i+Ns_mes])
     mes2 = I2_mes - complex(0, -1) * Q2_mes
     if (delete_dc):
         for i in range(len(cal1)):
-            mes2[i:i+Ns_cal] = mes2[i:i+Ns_cal] - np.mean(mes2[i:i+Ns_cal])
+            mes2[i:i+Ns_mes] = mes2[i:i+Ns_mes] - np.mean(mes2[i:i+Ns_mes])
     diff_phase = np.angle(cal1) - np.angle(cal2)
     alpha = np.mean(diff_phase)
     #alpha = phase(np.mean(cal1))-phase(np.mean(cal2))
