@@ -26,34 +26,38 @@ def angle():
 
     #Reconstitution des signaux
 
-    cal1 = I1_cal - complex(0,-1)*Q1_cal
+    cal1 = I1_cal + complex(0,-1)*Q1_cal
     if (delete_dc):
         for i in range(len(cal1)):
             cal1[i:i+Ns_cal] = cal1[i:i+Ns_cal] - np.mean(cal1[i:i+Ns_cal])
 
-    cal2 = I2_cal - complex(0,-1)*Q2_cal
+    cal2 = I2_cal + complex(0,-1)*Q2_cal
     if (delete_dc):
         for i in range(len(cal1)):
             cal2[i:i+Ns_cal] = cal2[i:i+Ns_cal] - np.mean(cal2[i:i+Ns_cal])
-    mes1 = I1_mes - complex(0, -1) * Q1_mes
+    mes1 = I1_mes + complex(0, -1) * Q1_mes
     if(delete_dc):
         for i in range(len(mes1)):
             mes1[i:i+Ns_mes] = mes1[i:i+Ns_mes] - np.mean(mes1[i:i+Ns_mes])
-    mes2 = I2_mes - complex(0, -1) * Q2_mes
+    mes2 = I2_mes + complex(0, -1) * Q2_mes
     if (delete_dc):
         for i in range(len(cal1)):
             mes2[i:i+Ns_mes] = mes2[i:i+Ns_mes] - np.mean(mes2[i:i+Ns_mes])
-    diff_phase = np.angle(cal1) - np.angle(cal2)
-    alpha = np.mean(diff_phase)
+    angles_0 = np.zeros(len(cal1))
+    for i in range(len(cal1)) :
+        angles_0[i] = phase(np.dot(cal1[i], np.conjugate(cal2[i])))
+    
+    phi_0 = np.mean(angles_0)
+
     #alpha = phase(np.mean(cal1))-phase(np.mean(cal2))
     #différence de phase sur tous les points et faire la moyenne de cette différence
-    mes2 = mes2*exp(1j*alpha)
-
+    mes2 = mes2*exp(1j*phi_0)
+    alpha = np.zeros(len(mes1))
     for i in range(len(mes1)):
-        diff_phase = np.angle(mes1[i]) - np.angle(mes2[i])
-        alpha = abs(np.mean(diff_phase))
-        angle = (np.degrees(np.arccos((alpha / np.pi)))) - 90
-        print(angle)
+        alpha[i] = phase(np.dot(mes1[i], np.conjugate(mes2[i])))
+
+    angle = np.degrees(np.arccos(alpha/np.pi))-90
+    print(angle)
 
 
 
