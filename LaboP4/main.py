@@ -7,7 +7,7 @@ from cmath import polar, exp, phase, rect
 def angle():
     calibration = True
     delete_dc = True
-    source_path = os.getcwd()
+    source_path = os.path.abspath(".")
     c = 3*10**8
     lam = c/(2.4*10**9)
     k = 2*np.pi/lam
