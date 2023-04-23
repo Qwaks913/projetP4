@@ -11,6 +11,7 @@ def angle():
     lam = c/(2.4*10**9)
     k = 2*np.pi/lam
     file = 'calib0.npz'
+    print(source_path)
     if (platform.system() == 'Windows'):
         name_cal = "%s\\calibration_file\\%s" % (source_path, file)  # Windows
     else:
