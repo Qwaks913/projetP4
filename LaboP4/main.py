@@ -5,7 +5,7 @@ import os
 import platform
 from cmath import polar, exp, phase, rect
 def angle():
-    roller = False 
+    
     delete_dc = True
     source_path = os.getcwd()
     c = 3*10**8
