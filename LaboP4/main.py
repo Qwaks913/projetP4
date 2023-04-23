@@ -13,13 +13,13 @@ def angle():
     k = 2*np.pi/lam
     file = 'GR13_mesure_4m_en face.npz'
     if (platform.system() == 'Windows'):
-        name_cal = "%s\\calibration_file\\%s" % (source_path, file)  # Windows
+        name_cal = "%s\\LaboP4\\calibration_file\\%s" % (source_path, file)  # Windows
     else:
         name_cal = "%s/calibration_file/%s" % (source_path, file)  # Mac et Linux
     #mesure
     file = 'GR13_4m_4l.npz'
     if (platform.system() == 'Windows'):
-        name_file = "%s\\mesures\\%s" % (source_path, file)  # Windows
+        name_file = "%s\\LaboP4\\mesures\\%s" % (source_path, file)  # Windows
     else:
         name_file = "%s/mesures/%s" % (source_path, file)  # Mac et Linux
     I1_cal, Q1_cal, I2_cal,Q2_cal,Ns_cal = fem(name_cal)
