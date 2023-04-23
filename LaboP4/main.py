@@ -5,12 +5,13 @@ import os
 import platform
 from cmath import polar, exp, phase, rect
 def angle():
+    calibration = True
     delete_dc = True
     source_path = os.getcwd()
     c = 3*10**8
     lam = c/(2.4*10**9)
     k = 2*np.pi/lam
-    file = 'calib0.npz'
+    file = 'GR13_mesure_4m_en face.npz'
     if (platform.system() == 'Windows'):
         name_cal = "%s\\calibration_file\\%s" % (source_path, file)  # Windows
     else:
@@ -23,7 +24,6 @@ def angle():
         name_file = "%s/mesures/%s" % (source_path, file)  # Mac et Linux
     I1_cal, Q1_cal, I2_cal,Q2_cal,Ns_cal = fem(name_cal)
     I1_mes, Q1_mes, I2_mes, Q2_mes,Ns_mes = fem(name_file)
-
     #Reconstitution des signaux
 
     cal1 = I1_cal + complex(0,-1)*Q1_cal
@@ -44,20 +44,20 @@ def angle():
         for i in range(len(cal1)):
             mes2[i:i+Ns_mes] = mes2[i:i+Ns_mes] - np.mean(mes2[i:i+Ns_mes])
     angles_0 = np.zeros(len(cal1))
-    for i in range(len(cal1)) :
-        angles_0[i] = phase(np.dot(cal1[i], np.conjugate(cal2[i])))
-    
-    phi_0 = np.mean(angles_0)
+    if(calibration):
+
+        phi_0 = phase(np.dot(cal1.flatten(), np.conjugate(cal2.flatten())))
 
 
-    #alpha = phase(np.mean(cal1))-phase(np.mean(cal2))
-    #différence de phase sur tous les points et faire la moyenne de cette différence
-    mes2 = mes2*exp(1j*phi_0)
+
+        #alpha = phase(np.mean(cal1))-phase(np.mean(cal2))
+        #différence de phase sur tous les points et faire la moyenne de cette différence
+        mes2 = mes2*exp(-1j*phi_0)
     alpha = np.zeros(len(mes1))
     for i in range(len(mes1)):
-        alpha[i] = phase(np.dot(mes1[i], np.conjugate(mes2[i])))
+        alpha[i] = phase(np.dot(mes1[i], np.conjugate((mes2[i]))))
 
-    angle = np.degrees(np.arccos(alpha/np.pi))-90
+    angle = 90-np.degrees(np.arccos(alpha/np.pi))
     print(angle)
 
 
@@ -92,7 +92,7 @@ def fem(name,base_name = None,source_path = None,graph = None,only_load = True):
         c = 3*10**8
         #On print les données
         print("B = "+str(B))
-        print("Ms = " + str(Ns))
+        print("Ns = " + str(Ns))
         print("Fs = " + str(1/Ts))
         print("f0 = " + str(f0))
         print("Tc = " + str(Tc))
