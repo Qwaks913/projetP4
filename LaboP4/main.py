@@ -52,7 +52,7 @@ def angle():
 
         #alpha = phase(np.mean(cal1))-phase(np.mean(cal2))
         #différence de phase sur tous les points et faire la moyenne de cette différence
-        mes2 = mes2*exp(-1j*phi_0)
+        mes2 = mes2*exp(1j*phi_0)
     alpha = np.zeros(len(mes1))
     for i in range(len(mes1)):
         alpha[i] = phase(np.dot(mes1[i], np.conjugate((mes2[i]))))
