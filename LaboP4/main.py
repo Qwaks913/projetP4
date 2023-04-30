@@ -18,6 +18,7 @@ def main():
             #If only load = 0 --> Saves graphs and return chirp matrix
             #If only load = 1 --> Doesn't save graphs and return chirp matrix
             #If only load = 2 --> Doesn't save graphs and returns frame matrix
-            fn.fem(file2, file, source_path, graph=True, only_load=False)
+            fn.fem(file2, file, source_path, only_load=0)
 measure_file = 'GR13_4m_2l.npz'
-fn.angle(measure_file)
+#fn.angle(measure_file)
+main()

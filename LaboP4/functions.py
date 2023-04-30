@@ -4,6 +4,19 @@ import seaborn as sb
 import os
 import platform
 from cmath import polar, exp, phase, rect
+def calib_distance(B,Ts,spectrogramme_2d_shape,pos_cible):
+    c = 299792458  # Vitesse de la lumière en m/s
+    radar_data = np.load('radar_data.npy')
+    distance_cible = 4
+    temps_de_vol = pos_cible[1]  # Temps de vol en échantillons
+    freq_cible = (pos_cible[0] / radar_data.shape[0]) * Ts  # Fréquence en Hz
+    distance_calibree = (freq_cible * temps_de_vol * c) / (2 * B)
+
+    # Convertir les positions en distance
+    distance_array = np.zeros(spectrogramme_2d_shape)
+    for i in range(spectrogramme_2d_shape[1]):
+        distance_array[:, i] = distance_calibree + (i / Ts) * (c / 2)
+    return distance_array
 
 def angle2():
 
@@ -180,8 +193,10 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
         full_signal2 = I_2 + complex(0, -1) * Q_2  # on additionne les parties réelles et immaginaires
         # A ce stade, on a un array qui contient N_frames frames de mesures avec les chirps a la suite l'un de l'autre
         chirp_index = 0
-        final_array1 = np.zeros(((Nc - 1) * (N_frame), Ns), dtype=complex)
-        final_array2 = np.zeros(((Nc - 1) * (N_frame), Ns), dtype=complex)
+        #final_array1 = np.zeros(((Nc - 1) * (N_frame), Ns), dtype=complex)
+        #final_array2 = np.zeros(((Nc - 1) * (N_frame), Ns), dtype=complex)
+        final_array1 = np.zeros(((Nc) * (N_frame), Ns), dtype=complex)
+        final_array2 = np.zeros(((Nc) * (N_frame), Ns), dtype=complex)
         for k in range(N_frame):
             for i in range(0, Nc * Ns - Ns, Nc):
 
@@ -204,8 +219,8 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
         freq_x = np.fft.fftshift(freq_x)
         v_max = 10
         # mais je pense que c'est plutot une moyenne sur les lignes qu'il faut faire pour éliminer la composante DC
-        array_of_frames1 = np.zeros((N_frame,Nc,Ns))
-        array_of_frames2 = np.zeros((N_frame, Nc, Ns))
+        array_of_frames1 = np.zeros((N_frame,Nc,Ns),dtype=np.complex128)
+        array_of_frames2 = np.zeros((N_frame, Nc, Ns),dtype=np.complex128)
         array_of_maxs_indexes = np.zeros((N_frame,2))
         index_frame = 0
         for i in range(0, len(final_array1), Nc):
@@ -222,11 +237,12 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
             fft2 = np.fft.fftshift(np.fft.fft2(mes2), axes=(0,))
             fft_final = np.rot90(fft1)
             #trouver le max de la FFT:
-            max_indexes = np.argmax(fft1)
-            max_indexes = np.unravel_index(max_indexes, fft1.shape)
+            max = np.argmax(fft1)
+            max_indexes = np.unravel_index(max, fft1.shape)
             array_of_frames1[index_frame] = mes1
             array_of_frames2[index_frame] = mes2
             array_of_maxs_indexes[index_frame] = max_indexes
+            calib_dist_array = calib_distance(B,Ts,fft_final.shape,max_indexes)
 
             if (only_load==0):
                 print("longueur de la fft " + str(fft_final.shape))
@@ -248,7 +264,7 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
 
                 plt.savefig(save_path, dpi=100)
                 plt.clf()
-        index_frame+=1
+            index_frame+=1
         return array_of_frames1,array_of_frames2,array_of_maxs_indexes
 
 
