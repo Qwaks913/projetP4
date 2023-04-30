@@ -23,8 +23,8 @@ def angle2():
         name_file = "%s\\LaboP4\\mesures\\%s" % (source_path, file)  # Windows
     else:
         name_file = "%s/mesures/%s" % (source_path, file)  # Mac et Linux
-    I1_cal, Q1_cal, I2_cal, Q2_cal, Ns_cal = fem(name_cal,only_load=True)
-    mes1, mes2, max = fem(name_file,only_load=False)
+    I1_cal, Q1_cal, I2_cal, Q2_cal, Ns_cal = fem(name_cal,only_load=2)
+    mes1, mes2, max = fem(name_file,only_load=1)
 
     cal1 = I1_cal + complex(0, -1) * Q1_cal
     cal2 = I2_cal + complex(0, -1) * Q2_cal
@@ -52,26 +52,24 @@ def angle2():
 
 
 
-def angle():
+def angle(measure_file,calib_file = 'calib0.npz'):
     calibration = True
     delete_dc = True
     source_path = os.path.abspath(".")
     c = 3 * 10 ** 8
     lam = c / (2.4 * 10 ** 9)
     k = 2 * np.pi / lam
-    file = 'GR13_mesure_4m_en face.npz'
     if (platform.system() == 'Windows'):
-        name_cal = "%s\\LaboP4\\calibration_file\\%s" % (source_path, file)  # Windows
+        name_cal = "%s\\LaboP4\\calibration_file\\%s" % (source_path, calib_file)  # Windows
     else:
-        name_cal = "%s/calibration_file/%s" % (source_path, file)  # Mac et Linux
+        name_cal = "%s/calibration_file/%s" % (source_path, calib_file)  # Mac et Linux
     # mesure
-    file = 'GR13_4m_2l.npz'
     if (platform.system() == 'Windows'):
-        name_file = "%s\\LaboP4\\mesures\\%s" % (source_path, file)  # Windows
+        name_file = "%s\\LaboP4\\mesures\\%s" % (source_path, measure_file)  # Windows
     else:
-        name_file = "%s/mesures/%s" % (source_path, file)  # Mac et Linux
-    I1_cal, Q1_cal, I2_cal, Q2_cal, Ns_cal = fem(name_cal)
-    I1_mes, Q1_mes, I2_mes, Q2_mes, Ns_mes = fem(name_file)
+        name_file = "%s/mesures/%s" % (source_path, measure_file)  # Mac et Linux
+    I1_cal, Q1_cal, I2_cal, Q2_cal, Ns_cal = fem(name_cal,only_load=2)
+    I1_mes, Q1_mes, I2_mes, Q2_mes, Ns_mes = fem(name_file,only_load=2)
     # Reconstitution des signaux
 
     cal1 = I1_cal + complex(0, -1) * Q1_cal
@@ -119,11 +117,11 @@ def angle():
                 alpha[i] = phase(res)
                 max = res
 
-    angle = np.degrees(np.arccos(alpha / np.pi))
+    angle = 90-np.degrees(np.arccos(alpha / np.pi))
     print(angle)
 
 
-def fem(name, base_name=None, source_path=None, graph=None, only_load=True):
+def fem(name, base_name=None, source_path=None, only_load = 0):
     # name = 'GR13_MES1_11m.npz'
     with np.load(name, allow_pickle=True) as mes:
         # On importe les données (si les colonnes existent)
@@ -174,7 +172,7 @@ def fem(name, base_name=None, source_path=None, graph=None, only_load=True):
             Q_2[i] = np.delete(data[i][3], indexes)
 
         # l'array data contient N_frames frames contenant chacuns les points recues par les différentes antennes
-        if (only_load):
+        if (only_load == 2):
             return (I_1, I_2, Q_1, Q_2, Ns)
 
         # Nous disposons maintenant des données recueillies par l'antenne sans les pauses.
@@ -206,7 +204,12 @@ def fem(name, base_name=None, source_path=None, graph=None, only_load=True):
         freq_x = np.fft.fftshift(freq_x)
         v_max = 10
         # mais je pense que c'est plutot une moyenne sur les lignes qu'il faut faire pour éliminer la composante DC
+        array_of_frames1 = np.zeros((N_frame,Nc,Ns))
+        array_of_frames2 = np.zeros((N_frame, Nc, Ns))
+        array_of_maxs_indexes = np.zeros((N_frame,2))
+        index_frame = 0
         for i in range(0, len(final_array1), Nc):
+
             mes1 = final_array1[i:i + Nc]
             mes2 = final_array2[i:i + Nc]
 
@@ -219,11 +222,13 @@ def fem(name, base_name=None, source_path=None, graph=None, only_load=True):
             fft2 = np.fft.fftshift(np.fft.fft2(mes2), axes=(0,))
             fft_final = np.rot90(fft1)
             #trouver le max de la FFT:
-            max = np.argmax(fft1)
-            max = np.unravel_index(max, fft1.shape)
-            if(graph!=True):
-                return (mes1,mes2,max)
-            if (graph):
+            max_indexes = np.argmax(fft1)
+            max_indexes = np.unravel_index(max_indexes, fft1.shape)
+            array_of_frames1[index_frame] = mes1
+            array_of_frames2[index_frame] = mes2
+            array_of_maxs_indexes[index_frame] = max_indexes
+
+            if (only_load==0):
                 print("longueur de la fft " + str(fft_final.shape))
 
                 print("Calcul en cours du frame #" + str(i / Nc + 1) + " du fichier : " + name)
@@ -243,6 +248,8 @@ def fem(name, base_name=None, source_path=None, graph=None, only_load=True):
 
                 plt.savefig(save_path, dpi=100)
                 plt.clf()
+        index_frame+=1
+        return array_of_frames1,array_of_frames2,array_of_maxs_indexes
 
 
 # Récupère le nom du répertoire courant. Les fichiers d'entrées doivent s'y trouver dans le dossier "mesures"
