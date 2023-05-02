@@ -184,6 +184,7 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
             Q_1[i] = np.delete(data[i][1], indexes)
             Q_2[i] = np.delete(data[i][3], indexes)
 
+
         # l'array data contient N_frames frames contenant chacuns les points recues par les différentes antennes
         if (only_load == 2):
             return (I_1, I_2, Q_1, Q_2, Ns)
@@ -198,6 +199,9 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
         final_array1 = np.zeros(((Nc) * (N_frame), Ns), dtype=complex)
         final_array2 = np.zeros(((Nc) * (N_frame), Ns), dtype=complex)
         for k in range(N_frame):
+
+            t = data_times[k]
+            print("t = "+str(t))
             for i in range(0, Nc * Ns - Ns, Nc):
 
                 point_index = 0
@@ -217,7 +221,7 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
 
         freq_x = np.fft.fftfreq(Nc, Ns * Ts)
         freq_x = np.fft.fftshift(freq_x)
-        v_max = 10
+        v_max = int(c/(4*f0*Tc*2))
         # mais je pense que c'est plutot une moyenne sur les lignes qu'il faut faire pour éliminer la composante DC
         array_of_frames1 = np.zeros((N_frame,Nc,Ns),dtype=np.complex128)
         array_of_frames2 = np.zeros((N_frame, Nc, Ns),dtype=np.complex128)
@@ -227,7 +231,11 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
 
             mes1 = final_array1[i:i + Nc]
             mes2 = final_array2[i:i + Nc]
-
+            # Ouvrir le fichier en mode append (ajout)
+            """debug_file = "debug.txt"
+            with open(debug_file, "a") as f:
+                f.write("Début du frame à t = "+str(t))
+                np.savetxt(f, full_signal1)"""
 
             for j in range(len(mes1[0])):
                 mes1[:, j] = mes1[:, j] - np.mean(mes1[:, j])
@@ -242,7 +250,7 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
             array_of_frames1[index_frame] = mes1
             array_of_frames2[index_frame] = mes2
             array_of_maxs_indexes[index_frame] = max_indexes
-            calib_dist_array = calib_distance(B,Ts,fft_final.shape,max_indexes)
+            #calib_dist_array = calib_distance(B,Ts,fft_final.shape,max_indexes)
 
             if (only_load==0):
                 print("longueur de la fft " + str(fft_final.shape))
