@@ -5,27 +5,42 @@ import os
 import platform
 from cmath import polar, exp, phase, rect
 
-def calib_distance(B,Ts,spectrogramme_2d_shape,pos_cible):
-    c = 299792458  # Vitesse de la lumière en m/s
-    radar_data = np.load('radar_data.npy')
-    distance_cible = 4
-    temps_de_vol = pos_cible[1]  # Temps de vol en échantillons
-    freq_cible = (pos_cible[0] / radar_data.shape[0]) * Ts  # Fréquence en Hz
-    distance_calibree = (freq_cible * temps_de_vol * c) / (2 * B)
-    # Convertir les positions en distance
-    distance_array = np.zeros(spectrogramme_2d_shape)
-    for i in range(spectrogramme_2d_shape[1]):
-        distance_array[:, i] = distance_calibree + (i / Ts) * (c / 2)
-    return distance_array
 
-"""def calib_angle():
+
+def calib_angle():
     file = 'calib0.npz'
     source_path = os.path.abspath(".")
     if (platform.system() == 'Windows'):
         name_cal = "%s\\LaboP4\\calibration_file\\%s" % (source_path, file)  # Windows
     else:
         name_cal = "%s/calibration_file/%s" % (source_path, file)  # Mac et Linux
-    fem(name_cal,only_load = )"""
+    fft1,fft2 = fem(name_cal,only_load = 3)
+    max1 = np.argmax(fft1)
+    max_indexes1 = np.unravel_index(max1, fft1.shape)
+    max2 = np.argmax(fft2)
+    max_indexes2 = np.unravel_index(max2, fft2.shape)
+    phi = phase(fft1[max_indexes1]*np.conjugate(fft2[max_indexes2]))
+    return phi
+
+def calc_angle(fft1,fft2):
+    max1 = np.argmax(fft1)
+    max_indexes1 = np.unravel_index(max1, fft1.shape)
+    max2 = np.argmax(fft2)
+    max_indexes2 = np.unravel_index(max2, fft2.shape)
+
+    test_angle = np.linspace(0, np.pi, 360)
+    count = 0
+    max = 0
+    for j in range(len(test_angle)):
+        res = np.dot(fft1[max_indexes1], (fft2[max_indexes2] * exp(-1j * test_angle[j])))
+        # print(np.linalg.norm(res), max)
+        if (np.linalg.norm(res)) > max:
+            phi = phase(res)
+            max = res
+    angle = 90 - np.degrees(np.arccos(phi / np.pi))
+    print(angle)
+
+
 
 
 def angle2():
@@ -202,6 +217,9 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
         # Nous disposons maintenant des données recueillies par l'antenne sans les pauses.
         full_signal1 = I_1 + complex(0, -1) * Q_1  # on additionne les parties réelles et immaginaires
         full_signal2 = I_2 + complex(0, -1) * Q_2  # on additionne les parties réelles et immaginaires
+        if(only_load != 3):
+            phi = calib_angle()
+            full_signal2 = full_signal2*exp(-1j*phi)
         # A ce stade, on a un array qui contient N_frames frames de mesures avec les chirps a la suite l'un de l'autre
         chirp_index = 0
         #final_array1 = np.zeros(((Nc - 1) * (N_frame), Ns), dtype=complex)
@@ -253,12 +271,16 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
             fft1 = np.fft.fftshift(np.fft.fft2(mes1), axes=(0,))
             fft2 = np.fft.fftshift(np.fft.fft2(mes2), axes=(0,))
             fft_final = np.rot90(fft1)
+            calc_angle(fft1,fft2)
             #trouver le max de la FFT:
             max = np.argmax(fft1)
             max_indexes = np.unravel_index(max, fft1.shape)
             array_of_frames1[index_frame] = mes1
             array_of_frames2[index_frame] = mes2
             array_of_maxs_indexes[index_frame] = max_indexes
+            #Utile pour retourner la première fft du fichier de calibration
+            if(only_load == 3):
+                return fft1,fft2
 
             if (only_load==0):
                 print("longueur de la fft " + str(fft_final.shape))
@@ -290,4 +312,4 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
 
 
 
-#angle()
+calib_angle()
