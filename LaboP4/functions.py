@@ -43,51 +43,6 @@ def calc_angle(fft1,fft2):
 
 
 
-def angle2():
-
-    calibration = True
-    source_path = os.path.abspath(".")
-    c = 3 * 10 ** 8
-    lam = c / (2.4 * 10 ** 9)
-    k = 2 * np.pi / lam
-    file = 'calib0.npz'
-    if (platform.system() == 'Windows'):
-        name_cal = "%s\\LaboP4\\calibration_file\\%s" % (source_path, file)  # Windows
-    else:
-        name_cal = "%s/calibration_file/%s" % (source_path, file)  # Mac et Linux
-    # mesure
-    file = 'GR13_4m_4l.npz'
-    if (platform.system() == 'Windows'):
-        name_file = "%s\\LaboP4\\mesures\\%s" % (source_path, file)  # Windows
-    else:
-        name_file = "%s/mesures/%s" % (source_path, file)  # Mac et Linux
-    I1_cal, Q1_cal, I2_cal, Q2_cal, Ns_cal = fem(name_cal,only_load=2)
-    mes1, mes2, max = fem(name_file,only_load=1)
-
-    cal1 = I1_cal + complex(0, -1) * Q1_cal
-    cal2 = I2_cal + complex(0, -1) * Q2_cal
-    if (calibration):
-
-        phis = np.linspace(0, 2 * np.pi, num=300)
-        maxNorm = 0
-        phi_0 = 0
-        for phi in phis:
-            tempoNorm = np.linalg.norm(np.dot(cal1.flatten(), cal2.flatten() * np.exp(-1j * phi)))
-            if (tempoNorm > maxNorm):
-                maxNorm = tempoNorm
-                phi_0 = phi
-        print("phi0 = ")
-        print(np.degrees(phi_0))
-
-        # alpha = phase(np.mean(cal1))-phase(np.mean(cal2))
-        # différence de phase sur tous les points et faire la moyenne de cette différence
-        print("phase de mes2 sans calibration" + str(phase(mes2[max])))
-        mes2 = mes2 * exp(-1j * phi_0)
-        print("phase de mes2 avec calibration" + str(phase(mes2[max])))
-    deph = phase(mes1[max])-phase(mes2[max])
-    angle = 90-np.degrees(np.arccos(deph / np.pi))
-    print("angle = "+str(angle))
-
 
 
 def angle(measure_file,calib_file = 'calib0.npz'):
