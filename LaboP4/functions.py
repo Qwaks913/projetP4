@@ -4,6 +4,7 @@ import seaborn as sb
 import os
 import platform
 from cmath import polar, exp, phase, rect
+
 def calib_distance(B,Ts,spectrogramme_2d_shape,pos_cible):
     c = 299792458  # Vitesse de la lumière en m/s
     radar_data = np.load('radar_data.npy')
@@ -11,12 +12,21 @@ def calib_distance(B,Ts,spectrogramme_2d_shape,pos_cible):
     temps_de_vol = pos_cible[1]  # Temps de vol en échantillons
     freq_cible = (pos_cible[0] / radar_data.shape[0]) * Ts  # Fréquence en Hz
     distance_calibree = (freq_cible * temps_de_vol * c) / (2 * B)
-
     # Convertir les positions en distance
     distance_array = np.zeros(spectrogramme_2d_shape)
     for i in range(spectrogramme_2d_shape[1]):
         distance_array[:, i] = distance_calibree + (i / Ts) * (c / 2)
     return distance_array
+
+"""def calib_angle():
+    file = 'calib0.npz'
+    source_path = os.path.abspath(".")
+    if (platform.system() == 'Windows'):
+        name_cal = "%s\\LaboP4\\calibration_file\\%s" % (source_path, file)  # Windows
+    else:
+        name_cal = "%s/calibration_file/%s" % (source_path, file)  # Mac et Linux
+    fem(name_cal,only_load = )"""
+
 
 def angle2():
 
@@ -201,7 +211,6 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
         for k in range(N_frame):
 
             t = data_times[k]
-            print("t = "+str(t))
             for i in range(0, Nc * Ns - Ns, Nc):
 
                 point_index = 0
@@ -250,14 +259,13 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
             array_of_frames1[index_frame] = mes1
             array_of_frames2[index_frame] = mes2
             array_of_maxs_indexes[index_frame] = max_indexes
-            #calib_dist_array = calib_distance(B,Ts,fft_final.shape,max_indexes)
 
             if (only_load==0):
                 print("longueur de la fft " + str(fft_final.shape))
 
                 print("Calcul en cours du frame #" + str(i / Nc + 1) + " du fichier : " + name)
                 # La bah on plot juste en vrai
-                plt.imshow(abs(fft_final), extent=[-v_max, v_max, 0, freq_y], aspect='auto')
+                plt.imshow(abs(fft_final), extent=[-v_max, v_max, -3, freq_y-3], aspect='auto')
                 plt.xlabel('v (m/s)')
                 plt.ylabel('d (m)')
                 plt.title(f'Frame {i / Nc + 1} of {N_frame}')
