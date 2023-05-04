@@ -4,11 +4,12 @@ import seaborn as sb
 import os
 import platform
 from cmath import polar, exp, phase, rect
+from math import radians
 
 
 
 def calib_angle():
-    file = 'calib0.npz'
+    file = 'GR13_mesure 8m_en_face.npz'
     source_path = os.path.abspath(".")
     if (platform.system() == 'Windows'):
         name_cal = "%s\\LaboP4\\calibration_file\\%s" % (source_path, file)  # Windows
@@ -32,99 +33,19 @@ def calc_angle(fft1,fft2):
     d = lam/2
     max1 = np.argmax(fft1)
     max_indexes1 = np.unravel_index(max1, fft1.shape)
-    max2 = np.argmax(fft2)
-    max_indexes2 = np.unravel_index(max2, fft2.shape)
     test_angle =np.linspace(0, np.pi, num=360)
-    count = 0
     max = 0
     phi = 0
     for j in range(len(test_angle)):
-        #res = np.dot(fft1[max_indexes1], (fft2[max_indexes2] * exp(-1j * test_angle[j])))
+
         res = np.abs(fft1[max_indexes1]+fft2[max_indexes1]*exp(-1j*k*d*np.cos(test_angle[j])))
-        # print(np.linalg.norm(res), max)
+
         if (res) > max:
             phi = test_angle[j]
             max = res
     angle = np.degrees(phi)
-    print(90-angle)
-    complexMax1 = fft1[max_indexes1]/np.abs(fft1[max_indexes1])
-    complexMax2 = fft2[max_indexes1]/np.abs(fft2[max_indexes1])
-    deph = phase(complexMax1/complexMax2)
-    print("dephasage de: "+str(deph))
-
-
-
-
-
-
-
-def angle(measure_file,calib_file = 'calib0.npz'):
-    calibration = True
-    delete_dc = True
-    source_path = os.path.abspath(".")
-    c = 3 * 10 ** 8
-    lam = c / (2.4 * 10 ** 9)
-    k = 2 * np.pi / lam
-    if (platform.system() == 'Windows'):
-        name_cal = "%s\\LaboP4\\calibration_file\\%s" % (source_path, calib_file)  # Windows
-    else:
-        name_cal = "%s/calibration_file/%s" % (source_path, calib_file)  # Mac et Linux
-    # mesure
-    if (platform.system() == 'Windows'):
-        name_file = "%s\\LaboP4\\mesures\\%s" % (source_path, measure_file)  # Windows
-    else:
-        name_file = "%s/mesures/%s" % (source_path, measure_file)  # Mac et Linux
-    I1_cal, Q1_cal, I2_cal, Q2_cal, Ns_cal = fem(name_cal,only_load=2)
-    I1_mes, Q1_mes, I2_mes, Q2_mes, Ns_mes = fem(name_file,only_load=2)
-    # Reconstitution des signaux
-
-    cal1 = I1_cal + complex(0, -1) * Q1_cal
-    if (delete_dc):
-        for i in range(len(cal1)):
-            cal1[i:i + Ns_cal] = cal1[i:i + Ns_cal] - np.mean(cal1[i:i + Ns_cal])
-
-    cal2 = I2_cal + complex(0, -1) * Q2_cal
-    if (delete_dc):
-        for i in range(len(cal1)):
-            cal2[i:i + Ns_cal] = cal2[i:i + Ns_cal] - np.mean(cal2[i:i + Ns_cal])
-    mes1 = I1_mes + complex(0, -1) * Q1_mes
-    if (delete_dc):
-        for i in range(len(mes1)):
-            mes1[i:i + Ns_mes] = mes1[i:i + Ns_mes] - np.mean(mes1[i:i + Ns_mes])
-    mes2 = I2_mes + complex(0, -1) * Q2_mes
-    if (delete_dc):
-        for i in range(len(cal1)):
-            mes2[i:i + Ns_mes] = mes2[i:i + Ns_mes] - np.mean(mes2[i:i + Ns_mes])
-    angles_0 = np.zeros(len(cal1))
-    if (calibration):
-
-        phis = np.linspace(0, 2 * np.pi, num=300)
-        maxNorm = 0
-        for phi in phis:
-            tempoNorm = np.linalg.norm(np.dot(cal1.flatten(), cal2.flatten() * np.exp(-1j * phi)))
-            if (tempoNorm > maxNorm):
-                maxNorm = tempoNorm
-                phi_0 = phi
-
-        print(np.degrees(phi_0))
-
-        # alpha = phase(np.mean(cal1))-phase(np.mean(cal2))
-        # différence de phase sur tous les points et faire la moyenne de cette différence
-        mes2 = mes2 * exp(-1j * phi_0)
-    test_angle = np.linspace(0, np.pi, 360)
-    alpha = np.zeros(len(mes1))
-    count = 0
-    for i in range(len(mes1)):
-        max = 0
-        for j in range(len(test_angle)):
-            res = np.dot(mes1[i], (mes2[i] * exp(-1j * test_angle[j])))
-            # print(np.linalg.norm(res), max)
-            if (np.linalg.norm(res)) > max:
-                alpha[i] = phase(res)
-                max = res
-
-    angle = 90-np.degrees(np.arccos(alpha / np.pi))
-    print(angle)
+    return 90-angle
+    print("L'angle de la cible principale est de :" + str(90-angle) + "°")
 
 
 def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True):
@@ -190,8 +111,6 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
             full_signal2 = full_signal2*exp(+1j*phi)
         # A ce stade, on a un array qui contient N_frames frames de mesures avec les chirps a la suite l'un de l'autre
         chirp_index = 0
-        #final_array1 = np.zeros(((Nc - 1) * (N_frame), Ns), dtype=complex)
-        #final_array2 = np.zeros(((Nc - 1) * (N_frame), Ns), dtype=complex)
         final_array1 = np.zeros(((Nc) * (N_frame), Ns), dtype=complex)
         final_array2 = np.zeros(((Nc) * (N_frame), Ns), dtype=complex)
         for k in range(N_frame):
@@ -210,14 +129,14 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
 
         # Réalise et plot les transformées de fourier
 
-        freq_y = np.fft.fftfreq(Ns, Ts)
 
-        freq_y = c * Ns / (2 * B)
 
-        freq_x = np.fft.fftfreq(Nc, Ns * Ts)
-        freq_x = np.fft.fftshift(freq_x)
+        d_max = c * Ns / (2 * B)
+
+
         v_max = int(c/(4*f0*Tc*2))
-        # mais je pense que c'est plutot une moyenne sur les lignes qu'il faut faire pour éliminer la composante DC
+
+
         array_of_frames1 = np.zeros((N_frame,Nc,Ns),dtype=np.complex128)
         array_of_frames2 = np.zeros((N_frame, Nc, Ns),dtype=np.complex128)
         array_of_maxs_indexes = np.zeros((N_frame,2))
@@ -227,10 +146,7 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
             mes1 = final_array1[i:i + Nc]
             mes2 = final_array2[i:i + Nc]
             # Ouvrir le fichier en mode append (ajout)
-            """debug_file = "debug.txt"
-            with open(debug_file, "a") as f:
-                f.write("Début du frame à t = "+str(t))
-                np.savetxt(f, full_signal1)"""
+
 
             for j in range(len(mes1[0])):
                 mes1[:, j] = mes1[:, j] - np.mean(mes1[:, j])
@@ -239,11 +155,12 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
             fft1 = np.fft.fftshift(np.fft.fft2(mes1), axes=(0,))
             fft2 = np.fft.fftshift(np.fft.fft2(mes2), axes=(0,))
 
+            #fft_final = np.rot90(fft1+fft2)
             fft_final = np.rot90(fft1)
-            calc_angle(fft1,fft2)
+            angle = calc_angle(fft1,fft2)
             #trouver le max de la FFT:
-            max = np.argmax(fft1)
-            max_indexes = np.unravel_index(max, fft1.shape)
+            max = np.argmax(abs(fft_final))
+            max_indexes = np.unravel_index(max, fft_final.shape)
             array_of_frames1[index_frame] = mes1
             array_of_frames2[index_frame] = mes2
             array_of_maxs_indexes[index_frame] = max_indexes
@@ -255,11 +172,32 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
                 print("longueur de la fft " + str(fft_final.shape))
 
                 print("Calcul en cours du frame #" + str(i / Nc + 1) + " du fichier : " + name)
+                print("max indexes = "+str(max_indexes))
+                print("len = " + str(fft_final.shape))
+                facteur_correcteur_dist = -4.57
+                distance = (len(fft_final)-max_indexes[0])/len(fft_final) * d_max +facteur_correcteur_dist
+                x = distance*np.sin(radians(angle))
+                y = abs(distance * np.cos(radians(angle)))
+                print("distance = "+str(distance))
+                print("angle = "+str(angle))
                 # La bah on plot juste en vrai
-                plt.imshow(abs(fft_final), extent=[-v_max, v_max, -3, freq_y-3], aspect='auto')
-                plt.xlabel('v (m/s)')
-                plt.ylabel('d (m)')
-                plt.title(f'Frame {i / Nc + 1} of {N_frame}')
+                fig, axs = plt.subplots(1, 2)
+                axs[0].imshow(abs(fft_final), extent=[-v_max, v_max, facteur_correcteur_dist, d_max+facteur_correcteur_dist], aspect='auto')
+                #plt.imshow(abs(fft_final), extent=[-v_max, v_max, -3, d_max-3], aspect='auto')
+                axs[0].set_xlabel('v (m/s)')
+                axs[0].set_ylabel('d (m)')
+                axs[0].set_title(f'Frame {i / Nc + 1} of {N_frame}')
+                #axs[0].set_figtext(0.7, 0.035, "Angle de la cible principale: " + str(round(angle,2)) + "°", ha='center')
+
+                axs[1].scatter(x,y,color ='red')
+                # plt.imshow(abs(fft_final), extent=[-v_max, v_max, -3, d_max-3], aspect='auto')
+                axs[1].set_xlabel('x (m)')
+                axs[1].set_ylabel('y (m)')
+                axs[1].set_xlim([-10, 10])
+                axs[1].set_ylim([0, d_max])
+                axs[1].set_title(f'Frame {i / Nc + 1} of {N_frame}')
+                fig.suptitle( "Angle de la cible principale: " + str(round(angle, 2)) + "°")
+
                 if (platform.system() == 'Windows'):
                     save_path = '%s\\fft\\%s\\fft_%i.jpg' % (source_path, base_name[0:-4], i / Nc + 1)
                 else:
@@ -267,18 +205,14 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
                 directory = os.path.dirname(save_path)
                 if not os.path.exists(directory):
                     os.makedirs(directory)
-                plt.colorbar()
-
-                plt.savefig(save_path, dpi=100)
-                plt.clf()
+                #axs[0].set_colorbar()
+                fig.tight_layout()
+                fig.savefig(save_path, dpi=100)
+                fig.clf()
             index_frame+=1
         return array_of_frames1,array_of_frames2,array_of_maxs_indexes
 
 
+
 # Récupère le nom du répertoire courant. Les fichiers d'entrées doivent s'y trouver dans le dossier "mesures"
 # Les fichiers de sorties porteront le même nom mais dans le dossier "fft".
-
-
-
-
-calib_angle()
