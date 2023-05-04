@@ -15,30 +15,43 @@ def calib_angle():
     else:
         name_cal = "%s/calibration_file/%s" % (source_path, file)  # Mac et Linux
     fft1,fft2 = fem(name_cal,only_load = 3)
-    max1 = np.argmax(fft1)
+    max1 = np.argmax(abs(fft1))
     max_indexes1 = np.unravel_index(max1, fft1.shape)
-    max2 = np.argmax(fft2)
+    max2 = np.argmax(abs(fft2))
     max_indexes2 = np.unravel_index(max2, fft2.shape)
-    phi = phase(fft1[max_indexes1]*np.conjugate(fft2[max_indexes2]))
+    max1_complex = fft1[max_indexes1]/np.abs(fft1[max_indexes1])
+    max2_complex = fft2[max_indexes1]/np.abs(fft2[max_indexes1])
+
+    phi = phase(max1_complex/max2_complex)
     return phi
 
 def calc_angle(fft1,fft2):
+    c = 3 * 10 ** 8
+    lam = c / (2.4 * 10 ** 9)
+    k = 2 * np.pi / lam
+    d = lam/2
     max1 = np.argmax(fft1)
     max_indexes1 = np.unravel_index(max1, fft1.shape)
     max2 = np.argmax(fft2)
     max_indexes2 = np.unravel_index(max2, fft2.shape)
-
-    test_angle = np.linspace(0, np.pi, 360)
+    test_angle =np.linspace(0, np.pi, num=360)
     count = 0
     max = 0
+    phi = 0
     for j in range(len(test_angle)):
-        res = np.dot(fft1[max_indexes1], (fft2[max_indexes2] * exp(-1j * test_angle[j])))
+        #res = np.dot(fft1[max_indexes1], (fft2[max_indexes2] * exp(-1j * test_angle[j])))
+        res = np.abs(fft1[max_indexes1]+fft2[max_indexes1]*exp(-1j*k*d*np.cos(test_angle[j])))
         # print(np.linalg.norm(res), max)
-        if (np.linalg.norm(res)) > max:
-            phi = phase(res)
+        if (res) > max:
+            phi = test_angle[j]
             max = res
-    angle = 90 - np.degrees(np.arccos(phi / np.pi))
-    print(angle)
+    angle = np.degrees(phi)
+    print(90-angle)
+    complexMax1 = fft1[max_indexes1]/np.abs(fft1[max_indexes1])
+    complexMax2 = fft2[max_indexes1]/np.abs(fft2[max_indexes1])
+    deph = phase(complexMax1/complexMax2)
+    print("dephasage de: "+str(deph))
+
 
 
 
@@ -114,7 +127,7 @@ def angle(measure_file,calib_file = 'calib0.npz'):
     print(angle)
 
 
-def fem(name, base_name=None, source_path=None, only_load = 0):
+def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True):
     # name = 'GR13_MES1_11m.npz'
     with np.load(name, allow_pickle=True) as mes:
         # On importe les données (si les colonnes existent)
@@ -172,9 +185,9 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
         # Nous disposons maintenant des données recueillies par l'antenne sans les pauses.
         full_signal1 = I_1 + complex(0, -1) * Q_1  # on additionne les parties réelles et immaginaires
         full_signal2 = I_2 + complex(0, -1) * Q_2  # on additionne les parties réelles et immaginaires
-        if(only_load != 3):
+        if(only_load != 3 and calibration == True):
             phi = calib_angle()
-            full_signal2 = full_signal2*exp(-1j*phi)
+            full_signal2 = full_signal2*exp(+1j*phi)
         # A ce stade, on a un array qui contient N_frames frames de mesures avec les chirps a la suite l'un de l'autre
         chirp_index = 0
         #final_array1 = np.zeros(((Nc - 1) * (N_frame), Ns), dtype=complex)
@@ -225,6 +238,7 @@ def fem(name, base_name=None, source_path=None, only_load = 0):
             # La composante DC est supprimée, on peut maintenant réaliser la FFT et la tourner de 90 degrés
             fft1 = np.fft.fftshift(np.fft.fft2(mes1), axes=(0,))
             fft2 = np.fft.fftshift(np.fft.fft2(mes2), axes=(0,))
+
             fft_final = np.rot90(fft1)
             calc_angle(fft1,fft2)
             #trouver le max de la FFT:
