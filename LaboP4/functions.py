@@ -9,7 +9,7 @@ from math import radians
 
 
 def calib_angle():
-    file = 'GR13_mesure 8m_en_face.npz'
+    file = 'Calib-8m.npz'
     source_path = os.path.abspath(".")
     if (platform.system() == 'Windows'):
         name_cal = "%s\\LaboP4\\calibration_file\\%s" % (source_path, file)  # Windows
@@ -48,7 +48,7 @@ def calc_angle(fft1,fft2):
     print("L'angle de la cible principale est de :" + str(90-angle) + "°")
 
 
-def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True):
+def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True,verbose = False):
     # name = 'GR13_MES1_11m.npz'
     with np.load(name, allow_pickle=True) as mes:
         # On importe les données (si les colonnes existent)
@@ -77,6 +77,7 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
         print("f0 = " + str(f0))
         print("Tc = " + str(Tc))
         print("Nc = " + str(Nc))
+        print("N_frames = " + str(N_frame))
 
         to_Throw = int(len(data[0][0]) - Ns * Nc)  # nombre total de points à supprimer par frame
         to_Throw_chirp = int(to_Throw / Nc)  # Nombre de points à supprimer par chirp
@@ -113,13 +114,26 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
         chirp_index = 0
         final_array1 = np.zeros(((Nc) * (N_frame), Ns), dtype=complex)
         final_array2 = np.zeros(((Nc) * (N_frame), Ns), dtype=complex)
+        #Pour chaque frame
         for k in range(N_frame):
-
+            '''print(" k = " + str(k))
+            print("N_frame = " + str(N_frame))
+            print(" FileName = " + str(name))
+            print()'''
             t = data_times[k]
-            for i in range(0, Nc * Ns - Ns, Nc):
+            #i prend l'indice du point qui marque le début du chirp
+
+            #Nc nombre de p-chirp par frame
+            #Ns nombre de points par chirp
+            for i in range(0, Nc * Ns - Ns, Ns):
 
                 point_index = 0
                 for j in range(i, i + Ns, 1):
+                    '''print("i = "+str(i))
+                    print(" j = "+ str(j))
+
+                    print(" chirp index = " + str(chirp_index))
+                    print(" point_index = " + str(point_index))'''
                     final_array1[chirp_index, point_index] = full_signal1[k][j]
                     final_array2[chirp_index, point_index] = full_signal2[k][j]
                     point_index += 1
@@ -169,17 +183,18 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
                 return fft1,fft2
 
             if (only_load==0):
-                print("longueur de la fft " + str(fft_final.shape))
-
-                print("Calcul en cours du frame #" + str(i / Nc + 1) + " du fichier : " + name)
-                print("max indexes = "+str(max_indexes))
-                print("len = " + str(fft_final.shape))
                 facteur_correcteur_dist = -4.57
-                distance = (len(fft_final)-max_indexes[0])/len(fft_final) * d_max +facteur_correcteur_dist
+                distance = (len(fft_final) - max_indexes[0]) / len(fft_final) * d_max + facteur_correcteur_dist
+                if(verbose):
+                    print("longueur de la fft " + str(fft_final.shape))
+                    print("Calcul en cours du frame #" + str(i / Nc + 1) + " du fichier : " + name)
+                    print("max indexes = "+str(max_indexes))
+                    print("len = " + str(fft_final.shape))
+                    print("distance = " + str(distance))
+                    print("angle = " + str(angle))
                 x = distance*np.sin(radians(angle))
                 y = abs(distance * np.cos(radians(angle)))
-                print("distance = "+str(distance))
-                print("angle = "+str(angle))
+
                 # La bah on plot juste en vrai
                 fig, axs = plt.subplots(1, 2)
                 axs[0].imshow(abs(fft_final), extent=[-v_max, v_max, facteur_correcteur_dist, d_max+facteur_correcteur_dist], aspect='auto')
@@ -209,7 +224,9 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
                 fig.tight_layout()
                 fig.savefig(save_path, dpi=100)
                 fig.clf()
+                plt.close(fig)
             index_frame+=1
+        print("Traitement du signal terminé")
         return array_of_frames1,array_of_frames2,array_of_maxs_indexes
 
 
