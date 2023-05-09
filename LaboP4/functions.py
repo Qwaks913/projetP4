@@ -6,10 +6,12 @@ import platform
 from cmath import polar, exp, phase, rect
 from math import radians
 
+c = 3 * 10 ** 8
+
 
 
 def calib_angle():
-    file = 'GR13_mesure_8m_en_face.npz'
+    file = 'Calib-fin.npz'
     source_path = os.path.abspath(".")
     if (platform.system() == 'Windows'):
         name_cal = "%s\\LaboP4\\calibration_file\\%s" % (source_path, file)  # Windows
@@ -47,93 +49,86 @@ def calc_angle(fft1,fft2):
     return 90-angle
     print("L'angle de la cible principale est de :" + str(90-angle) + "°")
 
+def pr_param(B, Ns, Nc, Ts, Tc, f0, N_frame, d_max, v_max):
+    print("\n####### PARAM DE NOS MESURES #######")
+    print("B = " + str(B))
+    print("Nc = " + str(Nc))
+    print("Ns = " + str(Ns))
+    print("fs = " + str(1 / Ts))
+    print("f0 = " + str(f0))
+    print("Ts = " + str(Ts))
+    print("Tc = " + str(Tc))
+    print("Nb de frames = " + str(N_frame))
+    print("d_max = " + str(d_max))
+    print("v_max = " + str(v_max) + "\n")
 
-def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True,verbose = False):
-    # name = 'GR13_MES1_11m.npz'
-    with np.load(name, allow_pickle=True) as mes:
+def fem(file_path, base_name=None, source_path=None, only_load = 0,calibration = True, prt = False):
+    """
+    @Param: *name       = file_path
+            *base_name  = file_name
+            *source_path= source_path
+    """
+    with np.load(file_path, allow_pickle=True) as mes:
         # On importe les données (si les colonnes existent)
-        data = mes['data']
-        if 'data_times' in mes:
-            data_times = mes['data_times']
-        background = mes['background']
-        if 'background_times' in mes:
-            background_times = mes['background_times']
+        unclean_data = mes['data']
         chirp = mes['chirp']
-        f0 = chirp[0]  # Fréquence de la porteuse
-        B = chirp[1]  #
-        Ns = int(chirp[2])  # Le nombre de points par chirp (utiles uniquement)
-        Nc = int(chirp[3])  # Le nombre de chirp dans une frame
-        Ts = (chirp[4])  # Période d'échantillonage
-        Tc = (chirp[5])  # Période de répétition des chirps en seconde
-        if 'datetime' in mes:
-            datetime = mes['datetime']
 
-        N_frame = len(data)
-        c = 3 * 10 ** 8
-        # On print les données
-        print("B = " + str(B))
-        print("Ns = " + str(Ns))
-        print("Fs = " + str(1 / Ts))
-        print("f0 = " + str(f0))
-        print("Tc = " + str(Tc))
-        print("Nc = " + str(Nc))
-        print("N_frames = " + str(N_frame))
+        f0 = chirp[0]               # Fréquence de la porteuse
+        B = chirp[1] 
+        Ns = int(chirp[2])          # Le nombre de points par chirp (utiles uniquement)
+        Nc = int(chirp[3])          # Le nombre de chirp dans une frame
+        Ts = (chirp[4])             # Période d'échantillonage
+        Tc = (chirp[5])             # Période de répétition des chirps en seconde
+        N_frame = len(unclean_data) #Nombres de frames
 
-        to_Throw = int(len(data[0][0]) - Ns * Nc)  # nombre total de points à supprimer par frame
-        to_Throw_chirp = int(to_Throw / Nc)  # Nombre de points à supprimer par chirp
-        newLen = int(len(data[0][0]) - to_Throw)  # définit la taille d'un frame après avoir retiré les points de pause
-        usefull = 1 - to_Throw_chirp / Ns
-        I_1 = np.zeros((len(data), newLen))
-        Q_1 = np.zeros((len(data), newLen))
-        I_2 = np.zeros((len(data), newLen))
-        Q_2 = np.zeros((len(data), newLen))
+        d_max = c * Ns / (2 * B)
+        v_max = int(c/(4*f0*Tc))
 
-        # On supprime les points de pauses
-        for i in range(len(data)):
-            indexes = []
-            for j in range(Ns, (Ns + to_Throw_chirp) * Nc, Ns + to_Throw_chirp):
-                for k in range(j, j + to_Throw_chirp):
-                    indexes.append(k)
-            I_1[i] = np.delete(data[i][0], indexes)
-            I_2[i] = np.delete(data[i][2], indexes)
-            Q_1[i] = np.delete(data[i][1], indexes)
-            Q_2[i] = np.delete(data[i][3], indexes)
+        if(prt):
+            pr_param(B, Ns, Nc, Ts, Tc, f0, N_frame, d_max, v_max)
 
+        N = unclean_data.shape[2]
+        
+        to_Throw = int(N - Ns * Nc)  # nombre total de points à supprimer par frame
+        N_tot = int(N/Nc)  # Nombre de points par chirp
+        newLen = int(N - to_Throw)  # définit la taille d'un frame après avoir retiré les points de pause
 
-        # l'array data contient N_frames frames contenant chacuns les points recues par les différentes antennes
+        #On place toutes les données dons un array clean sans les temps de pauses
+        data = np.zeros((N_frame, unclean_data.shape[1], newLen))
+        for i in range(Nc):
+            data[:, :, i*Ns:(i+1)*Ns] = unclean_data[:, :, i*N_tot:((i*N_tot)+Ns)]
+
         if (only_load == 2):
-            return (I_1, I_2, Q_1, Q_2, Ns)
+            return (data[:, 0, :], data[:, 2, :], data[:, 1, :], data[:, 3, :], Ns)
+        
+        full_signal1 = data[:, 0, :] - 1j*data[:, 1, :]
+        full_signal2 = data[:, 2, :] - 1j*data[:, 3, :]
 
-        # Nous disposons maintenant des données recueillies par l'antenne sans les pauses.
-        full_signal1 = I_1 + complex(0, -1) * Q_1  # on additionne les parties réelles et immaginaires
-        full_signal2 = I_2 + complex(0, -1) * Q_2  # on additionne les parties réelles et immaginaires
+        if(prt):
+            print('e_r_1.shape:', full_signal1.shape)
+
         if(only_load != 3 and calibration == True):
             phi = calib_angle()
             full_signal2 = full_signal2*exp(+1j*phi)
+        
         # A ce stade, on a un array qui contient N_frames frames de mesures avec les chirps a la suite l'un de l'autre
-        chirp_index = 0
-        final_array1 = np.zeros(((Nc) * (N_frame), Ns), dtype=complex)
-        final_array2 = np.zeros(((Nc) * (N_frame), Ns), dtype=complex)
-        #Pour chaque frame
-        for k in range(N_frame):
-            '''print(" k = " + str(k))
-            print("N_frame = " + str(N_frame))
-            print(" FileName = " + str(name))
-            print()'''
-            t = data_times[k]
-            #i prend l'indice du point qui marque le début du chirp
 
-            #Nc nombre de p-chirp par frame
-            #Ns nombre de points par chirp
-            for i in range(0, Nc * Ns - Ns, Ns):
+        final_array1 = np.zeros((N_frame, Nc, Ns), dtype=complex)
+        final_array2 = np.zeros((N_frame, Nc, Ns), dtype=complex)
+
+        for frame in range(N_frame):
+            for nc in range(Nc):
+                final_array1[frame, nc, :] = full_signal1[frame, nc*Ns:(nc+1)*Ns]
+                final_array2[frame, nc, :] = full_signal2[frame, nc*Ns:(nc+1)*Ns]
+
+        return None
+    
+        for k in range(N_frame):
+
+            for i in range(0, Nc * Ns - Ns, Nc):
 
                 point_index = 0
                 for j in range(i, i + Ns, 1):
-                    '''print("i = "+str(i))
-                    print(" j = "+ str(j))
-
-                    print(" chirp index = " + str(chirp_index))
-                    print(" point_index = " + str(point_index))'''
                     final_array1[chirp_index, point_index] = full_signal1[k][j]
                     final_array2[chirp_index, point_index] = full_signal2[k][j]
                     point_index += 1
@@ -145,10 +140,7 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
 
 
 
-        d_max = c * Ns / (2 * B)
-
-
-        v_max = int(c/(4*f0*Tc*2))
+        
 
 
         array_of_frames1 = np.zeros((N_frame,Nc,Ns),dtype=np.complex128)
@@ -166,10 +158,8 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
                 mes1[:, j] = mes1[:, j] - np.mean(mes1[:, j])
                 mes2[:, j] = mes2[:, j] - np.mean(mes2[:, j])
             # La composante DC est supprimée, on peut maintenant réaliser la FFT et la tourner de 90 degrés
-            """fft1 = np.fft.fftshift(np.fft.fft2(mes1), axes=(0,))
-            fft2 = np.fft.fftshift(np.fft.fft2(mes2), axes=(0,))"""
-            fft1 = np.fft.fftshift(np.fft.fft2(mes1,s = (100,100)), axes=(0,))
-            fft2 = np.fft.fftshift(np.fft.fft2(mes2,s = (100,100)), axes=(0,))
+            fft1 = np.fft.fftshift(np.fft.fft2(mes1), axes=(0,))
+            fft2 = np.fft.fftshift(np.fft.fft2(mes2), axes=(0,))
 
             #fft_final = np.rot90(fft1+fft2)
             fft_final = np.rot90(fft1)
@@ -185,18 +175,21 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
                 return fft1,fft2
 
             if (only_load==0):
+                """
+                print("longueur de la fft " + str(fft_final.shape))
+
+                print("Calcul en cours du frame #" + str(i / Nc + 1) + " du fichier : " + name)
+                print("max indexes = "+str(max_indexes))
+                print("len = " + str(fft_final.shape))
+                """
                 facteur_correcteur_dist = -4.57
-                distance = (len(fft_final) - max_indexes[0]) / len(fft_final) * d_max + facteur_correcteur_dist
-                if(verbose):
-                    print("longueur de la fft " + str(fft_final.shape))
-                    print("Calcul en cours du frame #" + str(i / Nc + 1) + " du fichier : " + name)
-                    print("max indexes = "+str(max_indexes))
-                    print("len = " + str(fft_final.shape))
-                    print("distance = " + str(distance))
-                    print("angle = " + str(angle))
+                distance = (len(fft_final)-max_indexes[0])/len(fft_final) * d_max +facteur_correcteur_dist
                 x = distance*np.sin(radians(angle))
                 y = abs(distance * np.cos(radians(angle)))
-
+                """
+                print("distance = "+str(distance))
+                print("angle = "+str(angle))
+                """
                 # La bah on plot juste en vrai
                 fig, axs = plt.subplots(1, 2)
                 axs[0].imshow(abs(fft_final), extent=[-v_max, v_max, facteur_correcteur_dist, d_max+facteur_correcteur_dist], aspect='auto')
@@ -213,7 +206,7 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
                 axs[1].set_xlim([-10, 10])
                 axs[1].set_ylim([0, d_max])
                 axs[1].set_title(f'Frame {i / Nc + 1} of {N_frame}')
-                fig.suptitle( "Angle de la cible principale: " + str(round(angle, 2)) + "°")
+                fig.suptitle( "An gle de la cible principale: " + str(round(angle, 2)) + "°")
 
                 if (platform.system() == 'Windows'):
                     save_path = '%s\\fft\\%s\\fft_%i.jpg' % (source_path, base_name[0:-4], i / Nc + 1)
@@ -226,9 +219,7 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
                 fig.tight_layout()
                 fig.savefig(save_path, dpi=100)
                 fig.clf()
-                plt.close(fig)
             index_frame+=1
-        print("Traitement du signal terminé")
         return array_of_frames1,array_of_frames2,array_of_maxs_indexes
 
 
