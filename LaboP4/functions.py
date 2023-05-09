@@ -9,7 +9,7 @@ from math import radians
 
 
 def calib_angle():
-    file = 'Calib-8m.npz'
+    file = 'GR13_mesure_8m_en_face.npz'
     source_path = os.path.abspath(".")
     if (platform.system() == 'Windows'):
         name_cal = "%s\\LaboP4\\calibration_file\\%s" % (source_path, file)  # Windows
@@ -166,8 +166,10 @@ def fem(name, base_name=None, source_path=None, only_load = 0,calibration = True
                 mes1[:, j] = mes1[:, j] - np.mean(mes1[:, j])
                 mes2[:, j] = mes2[:, j] - np.mean(mes2[:, j])
             # La composante DC est supprimée, on peut maintenant réaliser la FFT et la tourner de 90 degrés
-            fft1 = np.fft.fftshift(np.fft.fft2(mes1), axes=(0,))
-            fft2 = np.fft.fftshift(np.fft.fft2(mes2), axes=(0,))
+            """fft1 = np.fft.fftshift(np.fft.fft2(mes1), axes=(0,))
+            fft2 = np.fft.fftshift(np.fft.fft2(mes2), axes=(0,))"""
+            fft1 = np.fft.fftshift(np.fft.fft2(mes1,s = (100,100)), axes=(0,))
+            fft2 = np.fft.fftshift(np.fft.fft2(mes2,s = (100,100)), axes=(0,))
 
             #fft_final = np.rot90(fft1+fft2)
             fft_final = np.rot90(fft1)
